@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>YouTube Playlist Creator</title>
-  <!-- Google Identity Services (OAuth 2.0 token model) -->
   <script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleAuth()"></script>
   <style>
     * {
@@ -254,7 +253,6 @@
 </head>
 <body>
   <div class="card" id="app">
-    <!-- Login screen -->
     <div id="loginContainer" class="login-container">
       <h1>🎵 Playlist Creator</h1>
       <p class="subtitle">Turn song names or YouTube links into a private playlist on your account.</p>
@@ -267,7 +265,6 @@
       </p>
     </div>
 
-    <!-- Main app (hidden until login) -->
     <div id="mainContainer" class="main-container hidden">
       <div class="profile-area" id="profileArea">
         <img id="userAvatar" src="" alt="User avatar" />
@@ -308,13 +305,9 @@
   </div>
 
   <script>
-    // ---------- CONFIGURATION ----------
-    // ⚠️ REPLACE with your actual OAuth 2.0 client ID from Google Cloud Console
-    const CLIENT_ID = '869750639696-h4s0u5g4fj46blqd0pos.s.googleusercontent.com';
+    const CLIENT_ID = '869750639696-h4s0u5g4fj46blqd0pos9utb2hdv1rnt.apps.googleusercontent.com';
     const SCOPES = 'https://www.googleapis.com/auth/youtube.force-ssl';
-    // -----------------------------------
 
-    // DOM elements
     const loginContainer = document.getElementById('loginContainer');
     const mainContainer = document.getElementById('mainContainer');
     const googleSignInBtn = document.getElementById('googleSignInBtn');
@@ -328,23 +321,18 @@
     const statusArea = document.getElementById('statusArea');
     const progressInfo = document.getElementById('progressInfo');
 
-    // State
     let accessToken = null;
     let tokenExpiry = null;
     let tokenClient = null;
 
-    // ---------- Google Identity Services initialization ----------
     function initGoogleAuth() {
-      // This function is called when the GIS library is ready (onload callback)
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: handleTokenResponse,
-        // UX mode popup works well for SPAs
         ux_mode: 'popup',
       });
 
-      // Check if we already have a stored token (session)
       const storedToken = sessionStorage.getItem('gapi_access_token');
       const storedExpiry = sessionStorage.getItem('gapi_token_expiry');
       if (storedToken && storedExpiry && Date.now() < parseInt(storedExpiry, 10)) {
@@ -353,18 +341,15 @@
         showMainApp();
         fetchUserProfile();
       } else {
-        // Clear potentially expired token
         sessionStorage.removeItem('gapi_access_token');
         sessionStorage.removeItem('gapi_token_expiry');
       }
 
-      // Attach event listeners
       googleSignInBtn.addEventListener('click', () => {
         if (!tokenClient) {
           showStatus('Google sign-in not yet ready. Please wait a moment.', 'error');
           return;
         }
-        // Request access token (user consents if needed)
         tokenClient.requestAccessToken();
       });
 
@@ -374,11 +359,9 @@
 
     function handleTokenResponse(response) {
       if (response.error !== undefined) {
-        // User denied consent or error occurred
         showStatus('Login failed: ' + (response.error_description || response.error), 'error');
         return;
       }
-      // Store token and expiry
       accessToken = response.access_token;
       const expiresIn = response.expires_in || 3600;
       tokenExpiry = Date.now() + expiresIn * 1000;
@@ -422,9 +405,7 @@
 
     function signOut() {
       if (accessToken) {
-        google.accounts.oauth2.revoke(accessToken, () => {
-          // Ignore revoke response
-        });
+        google.accounts.oauth2.revoke(accessToken, () => {});
       }
       accessToken = null;
       tokenExpiry = null;
@@ -433,18 +414,15 @@
       showLoginScreen();
     }
 
-    // ---------- Token validation & refresh ----------
     async function getValidToken() {
       if (!accessToken || Date.now() >= tokenExpiry) {
-        // Need new token: force user login again
         return new Promise((resolve, reject) => {
           if (!tokenClient) {
             return reject(new Error('Auth client not initialized'));
           }
-          // Use a temporary callback wrapper
           const originalCallback = tokenClient.callback;
           tokenClient.callback = (response) => {
-            tokenClient.callback = originalCallback; // restore
+            tokenClient.callback = originalCallback;
             if (response.error) {
               reject(new Error(response.error_description || 'Re-authentication failed'));
             } else {
@@ -456,13 +434,11 @@
               resolve(accessToken);
             }
           };
-          tokenClient.requestAccessToken({ prompt: '' }); // prompt empty may silently fail; fallback to sign-in
-          // If silent fails, we can catch reject, but we’ll also handle that with error.
+          tokenClient.requestAccessToken({ prompt: '' });
           setTimeout(() => {
-            // If no callback was called within 2 seconds, assume silent fail and fallback to explicit prompt
             if (!accessToken || Date.now() >= tokenExpiry) {
               tokenClient.callback = originalCallback;
-              tokenClient.requestAccessToken(); // normal user prompt
+              tokenClient.requestAccessToken();
             }
           }, 2000);
         });
@@ -470,7 +446,6 @@
       return accessToken;
     }
 
-    // ---------- YouTube API helpers ----------
     async function apiCall(url, options = {}) {
       const token = await getValidToken();
       const headers = {
@@ -499,7 +474,6 @@
 
     function extractYouTubeId(raw) {
       const trimmed = raw.trim();
-      // Match various YouTube URL formats
       const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
       const match = trimmed.match(regex);
       return match ? match[1] : null;
@@ -533,7 +507,6 @@
       });
     }
 
-    // ---------- UI helpers ----------
     function showStatus(message, type = 'info') {
       statusArea.textContent = message;
       statusArea.className = `status-message ${type}`;
@@ -551,7 +524,6 @@
       progressInfo.classList.remove('hidden');
     }
 
-    // ---------- Main process ----------
     async function handleCreatePlaylist() {
       if (!accessToken || Date.now() >= tokenExpiry) {
         showStatus('Session expired. Please sign in again.', 'error');
@@ -577,22 +549,18 @@
         return;
       }
 
-      // Determine privacy
       const privacyRadio = document.querySelector('input[name="privacy"]:checked');
       const privacyStatus = privacyRadio ? privacyRadio.value : 'private';
 
-      // Disable button to prevent double clicks
       createBtn.disabled = true;
       createBtn.textContent = '⏳ Working...';
       clearStatus();
       setProgress('Preparing to create playlist...');
 
       try {
-        // 1. Create empty playlist
         setProgress('Creating playlist...');
         const playlistId = await createPlaylist(playlistName, privacyStatus);
         
-        // 2. Process each song
         const total = songs.length;
         let added = 0;
         const skipped = [];
@@ -603,7 +571,6 @@
 
           let videoId = extractYouTubeId(entry);
           if (!videoId) {
-            // Search by name
             try {
               videoId = await searchSong(entry);
             } catch (searchErr) {
@@ -623,7 +590,6 @@
             added++;
           } catch (insertErr) {
             console.warn('Insert error for', entry, insertErr);
-            // Quota exceeded or duplicate maybe
             if (insertErr.message.includes('quota')) {
               showStatus('YouTube quota exceeded. Playlist created but some songs could not be added.', 'error');
               break;
@@ -631,11 +597,9 @@
             skipped.push({ entry, reason: insertErr.message || 'Add failed' });
           }
 
-          // Small delay to respect rate limits (optional)
           if (i < total - 1) await new Promise(r => setTimeout(r, 200));
         }
 
-        // 3. Final status
         const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
         let finalMessage = `✅ Playlist created! ${added} song(s) added.`;
         if (skipped.length > 0) {
@@ -655,11 +619,6 @@
         createBtn.disabled = false;
         createBtn.textContent = '✨ Create Playlist';
       }
-    }
-
-    // Initial check: if missing client ID, warn
-    if (CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
-      console.warn('⚠️ Please replace CLIENT_ID with your actual Google OAuth 2.0 client ID.');
     }
   </script>
 </body>

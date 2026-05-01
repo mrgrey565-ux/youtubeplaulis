@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>YouTube Playlist Creator</title>
+  <!-- Google Identity Services (OAuth 2.0 token model) -->
+  <script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleAuth()"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      margin: 0;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 1.75rem;
+      padding: 2rem;
+      width: 100%;
+      max-width: 650px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      color: #f1f5f9;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(to right, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 1.8rem;
+      font-size: 1rem;
+    }
+
+    .login-container, .main-container {
+      transition: opacity 0.3s ease;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      background: white;
+      color: #1e293b;
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 0.8rem 1.8rem;
+      border: none;
+      border-radius: 3rem;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
+      width: 100%;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    .google-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px rgba(0,0,0,0.4);
+      background: #f8fafc;
+    }
+
+    .google-btn img {
+      width: 22px;
+      height: 22px;
+    }
+
+    .profile-area {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.8rem;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2rem;
+      padding: 0.8rem 1.2rem;
+    }
+
+    .profile-area img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid #60a5fa;
+    }
+
+    .profile-area .user-info {
+      flex: 1;
+    }
+
+    .profile-area .user-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: #f8fafc;
+    }
+
+    .profile-area .user-email {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .logout-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #cbd5e1;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+      white-space: nowrap;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .input-group {
+      margin-bottom: 1.3rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+      letter-spacing: 0.3px;
+    }
+
+    input, textarea {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 1rem;
+      padding: 0.85rem 1.2rem;
+      color: white;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border 0.2s;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.2);
+    }
+
+    textarea {
+      min-height: 130px;
+    }
+
+    .privacy-selector {
+      display: flex;
+      gap: 1rem;
+      margin: 0.8rem 0 1.2rem;
+    }
+
+    .privacy-selector label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 400;
+      cursor: pointer;
+    }
+
+    .create-btn {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      border: none;
+      color: white;
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 0.9rem 2rem;
+      border-radius: 3rem;
+      width: 100%;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.5px;
+      box-shadow: 0 10px 20px rgba(37,99,235,0.3);
+    }
+
+    .create-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px rgba(124,58,237,0.4);
+    }
+
+    .create-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status-message {
+      margin-top: 1.2rem;
+      padding: 0.9rem;
+      border-radius: 1rem;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.05);
+      color: #cbd5e1;
+    }
+
+    .status-message.error {
+      background: rgba(239,68,68,0.15);
+      border-left: 4px solid #ef4444;
+    }
+
+    .status-message.success {
+      background: rgba(34,197,94,0.15);
+      border-left: 4px solid #22c55e;
+    }
+
+    .playlist-link {
+      color: #93c5fd;
+      text-decoration: underline;
+      margin-top: 0.6rem;
+      display: inline-block;
+    }
+
+    .progress-info {
+      font-size: 0.9rem;
+      margin: 0.8rem 0;
+      color: #a5b4fc;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="app">
+    <!-- Login screen -->
+    <div id="loginContainer" class="login-container">
+      <h1>🎵 Playlist Creator</h1>
+      <p class="subtitle">Turn song names or YouTube links into a private playlist on your account.</p>
+      <button id="googleSignInBtn" class="google-btn">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" width="22" height="22">
+        Sign in with Google
+      </button>
+      <p style="text-align: center; margin-top: 1.2rem; font-size: 0.8rem; color: #64748b;">
+        You'll be asked to allow YouTube playlist management.
+      </p>
+    </div>
+
+    <!-- Main app (hidden until login) -->
+    <div id="mainContainer" class="main-container hidden">
+      <div class="profile-area" id="profileArea">
+        <img id="userAvatar" src="" alt="User avatar" />
+        <div class="user-info">
+          <div class="user-name" id="userName"></div>
+          <div class="user-email" id="userEmail"></div>
+        </div>
+        <button id="logoutBtn" class="logout-btn">Sign out</button>
+      </div>
+
+      <div class="input-group">
+        <label for="playlistName">Playlist name</label>
+        <input type="text" id="playlistName" placeholder="My awesome playlist" value="My YouTube Playlist" autocomplete="off">
+      </div>
+
+      <div class="input-group">
+        <label for="songList">Songs or YouTube links (one per line)</label>
+        <textarea id="songList" placeholder="Bohemian Rhapsody - Queen&#10;https://www.youtube.com/watch?v=fJ9rUzIMcZQ&#10;Shape of You"></textarea>
+      </div>
+
+      <div class="privacy-selector">
+        <label>
+          <input type="radio" name="privacy" value="private" checked> Private
+        </label>
+        <label>
+          <input type="radio" name="privacy" value="unlisted"> Unlisted
+        </label>
+        <label>
+          <input type="radio" name="privacy" value="public"> Public
+        </label>
+      </div>
+
+      <button id="createPlaylistBtn" class="create-btn">✨ Create Playlist</button>
+
+      <div id="statusArea" class="status-message hidden"></div>
+      <div id="progressInfo" class="progress-info hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- CONFIGURATION ----------
+    // ⚠️ REPLACE with your actual OAuth 2.0 client ID from Google Cloud Console
+    const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/youtube.force-ssl';
+    // -----------------------------------
+
+    // DOM elements
+    const loginContainer = document.getElementById('loginContainer');
+    const mainContainer = document.getElementById('mainContainer');
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const userEmail = document.getElementById('userEmail');
+    const playlistNameInput = document.getElementById('playlistName');
+    const songListInput = document.getElementById('songList');
+    const createBtn = document.getElementById('createPlaylistBtn');
+    const statusArea = document.getElementById('statusArea');
+    const progressInfo = document.getElementById('progressInfo');
+
+    // State
+    let accessToken = null;
+    let tokenExpiry = null;
+    let tokenClient = null;
+
+    // ---------- Google Identity Services initialization ----------
+    function initGoogleAuth() {
+      // This function is called when the GIS library is ready (onload callback)
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: handleTokenResponse,
+        // UX mode popup works well for SPAs
+        ux_mode: 'popup',
+      });
+
+      // Check if we already have a stored token (session)
+      const storedToken = sessionStorage.getItem('gapi_access_token');
+      const storedExpiry = sessionStorage.getItem('gapi_token_expiry');
+      if (storedToken && storedExpiry && Date.now() < parseInt(storedExpiry, 10)) {
+        accessToken = storedToken;
+        tokenExpiry = parseInt(storedExpiry, 10);
+        showMainApp();
+        fetchUserProfile();
+      } else {
+        // Clear potentially expired token
+        sessionStorage.removeItem('gapi_access_token');
+        sessionStorage.removeItem('gapi_token_expiry');
+      }
+
+      // Attach event listeners
+      googleSignInBtn.addEventListener('click', () => {
+        if (!tokenClient) {
+          showStatus('Google sign-in not yet ready. Please wait a moment.', 'error');
+          return;
+        }
+        // Request access token (user consents if needed)
+        tokenClient.requestAccessToken();
+      });
+
+      logoutBtn.addEventListener('click', signOut);
+      createBtn.addEventListener('click', handleCreatePlaylist);
+    }
+
+    function handleTokenResponse(response) {
+      if (response.error !== undefined) {
+        // User denied consent or error occurred
+        showStatus('Login failed: ' + (response.error_description || response.error), 'error');
+        return;
+      }
+      // Store token and expiry
+      accessToken = response.access_token;
+      const expiresIn = response.expires_in || 3600;
+      tokenExpiry = Date.now() + expiresIn * 1000;
+      sessionStorage.setItem('gapi_access_token', accessToken);
+      sessionStorage.setItem('gapi_token_expiry', tokenExpiry.toString());
+      
+      showMainApp();
+      fetchUserProfile();
+    }
+
+    async function fetchUserProfile() {
+      try {
+        const resp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (!resp.ok) throw new Error('Failed to fetch user info');
+        const data = await resp.json();
+        userName.textContent = data.name || 'User';
+        userEmail.textContent = data.email || '';
+        if (data.picture) {
+          userAvatar.src = data.picture;
+        }
+      } catch (err) {
+        console.warn('Could not load user profile:', err);
+        userName.textContent = 'YouTube User';
+        userAvatar.src = 'https://www.gstatic.com/images/branding/product/2x/avatar_anonymous_96dp.png';
+      }
+    }
+
+    function showMainApp() {
+      loginContainer.classList.add('hidden');
+      mainContainer.classList.remove('hidden');
+      clearStatus();
+    }
+
+    function showLoginScreen() {
+      mainContainer.classList.add('hidden');
+      loginContainer.classList.remove('hidden');
+      clearStatus();
+    }
+
+    function signOut() {
+      if (accessToken) {
+        google.accounts.oauth2.revoke(accessToken, () => {
+          // Ignore revoke response
+        });
+      }
+      accessToken = null;
+      tokenExpiry = null;
+      sessionStorage.removeItem('gapi_access_token');
+      sessionStorage.removeItem('gapi_token_expiry');
+      showLoginScreen();
+    }
+
+    // ---------- Token validation & refresh ----------
+    async function getValidToken() {
+      if (!accessToken || Date.now() >= tokenExpiry) {
+        // Need new token: force user login again
+        return new Promise((resolve, reject) => {
+          if (!tokenClient) {
+            return reject(new Error('Auth client not initialized'));
+          }
+          // Use a temporary callback wrapper
+          const originalCallback = tokenClient.callback;
+          tokenClient.callback = (response) => {
+            tokenClient.callback = originalCallback; // restore
+            if (response.error) {
+              reject(new Error(response.error_description || 'Re-authentication failed'));
+            } else {
+              accessToken = response.access_token;
+              const expiresIn = response.expires_in || 3600;
+              tokenExpiry = Date.now() + expiresIn * 1000;
+              sessionStorage.setItem('gapi_access_token', accessToken);
+              sessionStorage.setItem('gapi_token_expiry', tokenExpiry.toString());
+              resolve(accessToken);
+            }
+          };
+          tokenClient.requestAccessToken({ prompt: '' }); // prompt empty may silently fail; fallback to sign-in
+          // If silent fails, we can catch reject, but we’ll also handle that with error.
+          setTimeout(() => {
+            // If no callback was called within 2 seconds, assume silent fail and fallback to explicit prompt
+            if (!accessToken || Date.now() >= tokenExpiry) {
+              tokenClient.callback = originalCallback;
+              tokenClient.requestAccessToken(); // normal user prompt
+            }
+          }, 2000);
+        });
+      }
+      return accessToken;
+    }
+
+    // ---------- YouTube API helpers ----------
+    async function apiCall(url, options = {}) {
+      const token = await getValidToken();
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+      const response = await fetch(url, { ...options, headers });
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        const message = errorBody.error?.message || `YouTube API error (${response.status})`;
+        throw new Error(message);
+      }
+      return response.json();
+    }
+
+    async function searchSong(query) {
+      const encodedQuery = encodeURIComponent(query);
+      const url = `https://youtube.googleapis.com/youtube/v3/search?part=snippet&maxResults=1&q=${encodedQuery}&type=video`;
+      const data = await apiCall(url);
+      if (data.items && data.items.length > 0) {
+        return data.items[0].id.videoId;
+      }
+      return null;
+    }
+
+    function extractYouTubeId(raw) {
+      const trimmed = raw.trim();
+      // Match various YouTube URL formats
+      const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = trimmed.match(regex);
+      return match ? match[1] : null;
+    }
+
+    async function createPlaylist(title, privacyStatus = 'private') {
+      const body = {
+        snippet: { title: title },
+        status: { privacyStatus: privacyStatus }
+      };
+      const data = await apiCall('https://youtube.googleapis.com/youtube/v3/playlists?part=snippet,status', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+      return data.id;
+    }
+
+    async function addToPlaylist(playlistId, videoId) {
+      const body = {
+        snippet: {
+          playlistId: playlistId,
+          resourceId: {
+            kind: 'youtube#video',
+            videoId: videoId
+          }
+        }
+      };
+      await apiCall('https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+    }
+
+    // ---------- UI helpers ----------
+    function showStatus(message, type = 'info') {
+      statusArea.textContent = message;
+      statusArea.className = `status-message ${type}`;
+      statusArea.classList.remove('hidden');
+    }
+
+    function clearStatus() {
+      statusArea.classList.add('hidden');
+      statusArea.textContent = '';
+      progressInfo.classList.add('hidden');
+    }
+
+    function setProgress(text) {
+      progressInfo.textContent = text;
+      progressInfo.classList.remove('hidden');
+    }
+
+    // ---------- Main process ----------
+    async function handleCreatePlaylist() {
+      if (!accessToken || Date.now() >= tokenExpiry) {
+        showStatus('Session expired. Please sign in again.', 'error');
+        signOut();
+        return;
+      }
+
+      const playlistName = playlistNameInput.value.trim();
+      if (!playlistName) {
+        showStatus('Please enter a playlist name.', 'error');
+        return;
+      }
+
+      const rawSongs = songListInput.value.trim();
+      if (!rawSongs) {
+        showStatus('Add at least one song name or YouTube link.', 'error');
+        return;
+      }
+
+      const songs = rawSongs.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+      if (songs.length === 0) {
+        showStatus('No valid entries found.', 'error');
+        return;
+      }
+
+      // Determine privacy
+      const privacyRadio = document.querySelector('input[name="privacy"]:checked');
+      const privacyStatus = privacyRadio ? privacyRadio.value : 'private';
+
+      // Disable button to prevent double clicks
+      createBtn.disabled = true;
+      createBtn.textContent = '⏳ Working...';
+      clearStatus();
+      setProgress('Preparing to create playlist...');
+
+      try {
+        // 1. Create empty playlist
+        setProgress('Creating playlist...');
+        const playlistId = await createPlaylist(playlistName, privacyStatus);
+        
+        // 2. Process each song
+        const total = songs.length;
+        let added = 0;
+        const skipped = [];
+
+        for (let i = 0; i < total; i++) {
+          const entry = songs[i];
+          setProgress(`Processing ${i+1}/${total}: "${entry.substring(0, 40)}${entry.length>40?'...':''}"`);
+
+          let videoId = extractYouTubeId(entry);
+          if (!videoId) {
+            // Search by name
+            try {
+              videoId = await searchSong(entry);
+            } catch (searchErr) {
+              console.warn('Search error for', entry, searchErr);
+              skipped.push({ entry, reason: 'Search failed' });
+              continue;
+            }
+          }
+
+          if (!videoId) {
+            skipped.push({ entry, reason: 'No video found' });
+            continue;
+          }
+
+          try {
+            await addToPlaylist(playlistId, videoId);
+            added++;
+          } catch (insertErr) {
+            console.warn('Insert error for', entry, insertErr);
+            // Quota exceeded or duplicate maybe
+            if (insertErr.message.includes('quota')) {
+              showStatus('YouTube quota exceeded. Playlist created but some songs could not be added.', 'error');
+              break;
+            }
+            skipped.push({ entry, reason: insertErr.message || 'Add failed' });
+          }
+
+          // Small delay to respect rate limits (optional)
+          if (i < total - 1) await new Promise(r => setTimeout(r, 200));
+        }
+
+        // 3. Final status
+        const playlistUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
+        let finalMessage = `✅ Playlist created! ${added} song(s) added.`;
+        if (skipped.length > 0) {
+          finalMessage += ` ${skipped.length} skipped.`;
+        }
+        finalMessage += ` <a class="playlist-link" href="${playlistUrl}" target="_blank" rel="noopener">Open playlist</a>`;
+
+        showStatus(finalMessage, 'success');
+        setProgress('');
+        progressInfo.classList.add('hidden');
+      } catch (error) {
+        console.error('Playlist creation error:', error);
+        let msg = error.message || 'Something went wrong.';
+        if (msg.includes('quota')) msg = 'YouTube quota exceeded. Try again later.';
+        showStatus(`❌ ${msg}`, 'error');
+      } finally {
+        createBtn.disabled = false;
+        createBtn.textContent = '✨ Create Playlist';
+      }
+    }
+
+    // Initial check: if missing client ID, warn
+    if (CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
+      console.warn('⚠️ Please replace CLIENT_ID with your actual Google OAuth 2.0 client ID.');
+    }
+  </script>
+</body>
+</html>
